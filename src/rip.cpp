@@ -13,6 +13,7 @@
 #include <thread>
 #include <vector>
 #include <lame/lame.h>
+#include <sys/stat.h>
 #include "dirent.h"
 #include "pthread.h"
 
@@ -40,9 +41,13 @@ void *encoding_worker(void *args)
         if (data->print_level >= 1) std::cout << "Thread " << data->thread_id << " encode file " << *iter_wav_filenames_cur << std::endl;
         pthread_mutex_unlock(data->mutex);
 
-        std::string mp3_filename = iter_wav_filenames_cur->substr(0, iter_wav_filenames_cur->length() - 3) + "mp3";
         FILE *wav = fopen(iter_wav_filenames_cur->c_str(), "rb");
+        if (!wav) throw std::runtime_error("Can't open file " + *iter_wav_filenames_cur);
+        fseek(wav, 44, SEEK_SET);
+
+        std::string mp3_filename = iter_wav_filenames_cur->substr(0, iter_wav_filenames_cur->length() - 3) + "mp3";
         FILE *mp3 = fopen(mp3_filename.c_str(), "wb");
+        if (!mp3) throw std::runtime_error("Can't open file " + mp3_filename);
 
         const int pcm_buffer_size = 8192;
         const int mp3_buffer_size = 8192;
@@ -52,13 +57,7 @@ void *encoding_worker(void *args)
 
         lame_t lame = lame_init();
         if (!lame) throw std::runtime_error("Unable to initialize MP3");
-        lame_set_num_channels(lame, 2);
-        lame_set_in_samplerate(lame, 44100);
-        lame_set_out_samplerate(lame, 44100);
-        lame_set_brate(lame, 16);
-        lame_set_mode(lame, STEREO);
         lame_set_quality(lame, 2);
-        lame_set_bWriteVbrTag(lame, 0);
         if (lame_init_params(lame) < 0) throw std::runtime_error("Unable to initialize MP3 parameters");
 
         int read, write;
@@ -85,9 +84,14 @@ std::vector<std::string> get_all_wav_filenames(std::string const& dirname)
     if (!dir) throw std::runtime_error("Can not open directory " + dirname);
     struct dirent *ent;
     while ((ent = readdir(dir)) != NULL) {
-        std::string wav_file = ent->d_name;
+        //if(!S_ISREG(ent->d_type)) continue;
+        std::string wav_file(ent->d_name);
         if (wav_file.length() < 4 or wav_file.substr(wav_file.length() - 4, wav_file.length()) != ".wav") continue;
-        wav_files.push_back(ent->d_name);
+#ifdef WIN32
+        wav_files.push_back(dirname + "\\" + wav_file);
+#else
+        wav_files.push_back(dirname + "/" + wav_file);
+#endif
     }
     closedir(dir);
     return wav_files;

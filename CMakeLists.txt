@@ -4,7 +4,6 @@ message("${PROJECT_NAME} version ${PROJECT_VERSION}")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -pedantic-errors")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static") 
 
 find_package(Lame REQUIRED)
 find_package(Threads REQUIRED)
